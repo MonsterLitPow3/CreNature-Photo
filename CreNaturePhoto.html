@@ -236,12 +236,12 @@
             background: #000;
             position: relative;
             padding: 20px;
-            padding-top: 120px;
+            padding-top: 80px;
         }
         
         .preview-img {
-            max-width: 75%;
-            max-height: 45vh;
+            max-width: 85%;
+            max-height: 50vh;
             border-radius: 20px;
             border: 1px solid rgba(255,255,255,0.2);
             object-fit: contain;
@@ -250,8 +250,8 @@
         }
         
         .preview-video {
-            max-width: 75%;
-            max-height: 45vh;
+            max-width: 85%;
+            max-height: 50vh;
             border-radius: 20px;
             margin-bottom: 20px;
             display: none;
@@ -468,7 +468,6 @@ function updateUI() {
     glowLabel.textContent = t.glow;
     langToggleBtn.textContent = currentLang === "en" ? "中文" : "English";
     if (zoomLabelSpan) zoomLabelSpan.textContent = t.zoom;
-    if (filterItems.length) buildFilterUI();
     updateMediaSpecificBadge();
 }
 
@@ -744,7 +743,7 @@ function stopRecordingTimer() {
 }
 
 function buildFilterUI() {
-    const filters = i18n[currentLang];
+    const filters = i18n[currentLang].filters;
     filterTrack.innerHTML = '';
     filterItems = [];
     filters.forEach((name, idx) => {
@@ -819,7 +818,7 @@ async function toggleGlow() {
     if (originalPhotoBlob) await applyFilterToPhoto();
 }
 
-// 綁定事件（修正返回邏輯）
+// 綁定事件
 document.getElementById('backHomeBtn').onclick = goToHome;
 document.getElementById('backFromPreviewBtn').onclick = backToCamera;
 document.getElementById('shutterBtn').onclick = takePhoto;
@@ -829,7 +828,7 @@ document.getElementById('downloadBtn').onclick = downloadMedia;
 langToggleBtn.onclick = toggleLanguage;
 glowToggle.onclick = toggleGlow;
 
-// 初始化：直接打開相機
+// 初始化
 updateUI();
 buildFilterUI();
 homePage.style.display = 'none';
