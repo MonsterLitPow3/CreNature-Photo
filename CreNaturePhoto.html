@@ -133,6 +133,7 @@
             border: 2px solid white;
             z-index: 10;
             cursor: pointer;
+            display: none; /* 預設隱藏 */
         }
         .video-record-btn.recording {
             background: #ffaa00;
@@ -417,6 +418,10 @@ const i18n = {
     }
 };
 
+// 裝置判斷：iOS 才顯示錄影
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const isAndroid = /Android/.test(navigator.userAgent);
+
 let currentLang = "en";
 let mediaStream = null;
 let isRecording = false;
@@ -453,12 +458,18 @@ const langToggleBtn = document.getElementById('langToggleBtn');
 const filterBadge = document.getElementById('filterBadge');
 const canvas = document.getElementById('captureCanvas');
 const ctx = canvas.getContext('2d');
+const videoRecordBtn = document.getElementById('videoRecordBtn');
 
 const zoomControl = document.getElementById('zoomControl');
 const zoomSlider = document.getElementById('zoomSlider');
 const zoomValueSpan = document.getElementById('zoomValue');
 const zoomLabelSpan = document.getElementById('zoomLabel');
 const focusIndicator = document.getElementById('focusIndicator');
+
+// iOS 才顯示錄影按鈕
+if (isIOS) {
+    videoRecordBtn.style.display = 'block';
+}
 
 function updateUI() {
     const t = i18n[currentLang];
@@ -688,6 +699,7 @@ async function applyFilterToPhoto() {
 }
 
 async function startRecording() {
+    if (!isIOS) return; // 非iOS不執行
     if (!mediaStream || isRecording) return;
     recordedChunks = [];
 
@@ -840,7 +852,7 @@ async function toggleGlow() {
 document.getElementById('backHomeBtn').onclick = goToHome;
 document.getElementById('backFromPreviewBtn').onclick = backToCamera;
 document.getElementById('shutterBtn').onclick = takePhoto;
-document.getElementById('videoRecordBtn').onclick = () => { isRecording ? stopRecording() : startRecording(); };
+document.getElementById('videoRecordBtn').onclick = () => { if(isIOS) { isRecording ? stopRecording() : startRecording(); } };
 document.getElementById('reTakeBtn').onclick = backToCamera;
 document.getElementById('downloadBtn').onclick = downloadMedia;
 langToggleBtn.onclick = toggleLanguage;
