@@ -152,7 +152,7 @@
             padding: 6px 16px;
             border-radius: 30px;
             font-size: 16px;
-            font-weight: 600;
+            font-weight: 60;
             color: #ff3b30;
             z-index: 10;
             display: none;
@@ -431,6 +431,7 @@ let originalVideoBlob = null;
 let currentFilterIndex = 0;
 let glowEnabled = false;
 let filterItems = [];
+let videoExtension = 'mp4';
 
 let videoTrack = null;
 let zoomCapabilities = null;
@@ -689,11 +690,23 @@ async function applyFilterToPhoto() {
 async function startRecording() {
     if (!mediaStream || isRecording) return;
     recordedChunks = [];
-    const mimeType = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm';
+
+    let mimeType;
+    if (MediaRecorder.isTypeSupported('video/mp4')) {
+        mimeType = 'video/mp4';
+        videoExtension = 'mp4';
+    } else if (MediaRecorder.isTypeSupported('video/webm')) {
+        mimeType = 'video/webm';
+        videoExtension = 'webm';
+    } else {
+        mimeType = '';
+        videoExtension = 'mp4';
+    }
+
     mediaRecorder = new MediaRecorder(mediaStream, { mimeType });
     mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
     mediaRecorder.onstop = async () => {
-        const videoBlob = new Blob(recordedChunks, { type: 'video/mp4' });
+        const videoBlob = new Blob(recordedChunks, { type: mimeType || 'video/mp4' });
         currentMediaType = 'video';
         originalVideoBlob = videoBlob;
         originalPhotoBlob = null;
@@ -762,7 +775,6 @@ function buildFilterUI() {
     });
 }
 
-// 返回主站
 function goToHome() {
     if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
     if (isRecording) stopRecording();
@@ -780,18 +792,25 @@ function backToCamera() {
 }
 
 function downloadMedia() {
-    if (currentMediaType === 'photo' && previewImg.src.startsWith('blob:')) {
-        const a = document.createElement('a');
-        a.href = previewImg.src;
-        a.download = `CreNature_${Date.now()}.jpg`;
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    } else if (currentMediaType === 'video' && originalVideoBlob) {
+    if (currentMediaType === 'photo' && previewImg.src) {
+        const link = document.createElement('a');
+        link.href = previewImg.src;
+        link.download = 'CreNature_Photo_' + Date.now() + '.jpg';
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => document.body.removeChild(link), 100);
+    } 
+    else if (currentMediaType === 'video' && originalVideoBlob) {
         const url = URL.createObjectURL(originalVideoBlob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `CreNature_${Date.now()}.mp4`;
-        document.body.appendChild(a); a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 100);
+        a.download = `CreNature_Video_${Date.now()}.${videoExtension}`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 500);
     }
 }
 
@@ -818,7 +837,6 @@ async function toggleGlow() {
     if (originalPhotoBlob) await applyFilterToPhoto();
 }
 
-// 綁定事件
 document.getElementById('backHomeBtn').onclick = goToHome;
 document.getElementById('backFromPreviewBtn').onclick = backToCamera;
 document.getElementById('shutterBtn').onclick = takePhoto;
@@ -828,7 +846,6 @@ document.getElementById('downloadBtn').onclick = downloadMedia;
 langToggleBtn.onclick = toggleLanguage;
 glowToggle.onclick = toggleGlow;
 
-// 初始化
 updateUI();
 buildFilterUI();
 homePage.style.display = 'none';
