@@ -169,7 +169,6 @@
             display: block;
         }
 
-        /* 变焦控件 (拍照/录像通用) */
         .zoom-control {
             position: absolute;
             bottom: max(130px, env(safe-area-inset-bottom) + 110px);
@@ -220,7 +219,6 @@
             text-align: right;
         }
 
-        /* 对焦指示器 */
         .focus-indicator {
             position: absolute;
             width: 70px;
@@ -265,7 +263,6 @@
             display: none;
         }
         
-        /* 滤镜区域 - 只在照片模式显示，且居中布局 */
         .filter-section {
             width: 100%;
             display: none;
@@ -352,8 +349,6 @@
 <body>
 
 <button class="lang-btn" id="langToggleBtn">中文</button>
-
-<!-- 对焦动画指示器 -->
 <div class="focus-indicator" id="focusIndicator"></div>
 
 <div class="home-wrap" id="homePage">
@@ -364,7 +359,6 @@
 <div class="camera-wrap" id="cameraPage">
     <video id="video" autoplay playsinline muted></video>
     <div class="record-timer" id="recordTimer">⏺ 0.0s</div>
-    <!-- 变焦控件 -->
     <div class="zoom-control" id="zoomControl" style="display: none;">
         <span class="zoom-label" id="zoomLabel">🔍 ZOOM</span>
         <input type="range" class="zoom-slider" id="zoomSlider" min="1" max="3" step="0.01" value="1">
@@ -380,7 +374,6 @@
     <video class="preview-video" id="previewVideo" controls></video>
     <div class="filter-badge" id="filterBadge">Original</div>
     
-    <!-- 滤镜区域 - 只在照片时显示 -->
     <div class="filter-section" id="filterSection">
         <div class="filter-scroll-container" id="filterScroll">
             <div class="filter-track" id="filterTrack"></div>
@@ -401,7 +394,6 @@
 <canvas id="captureCanvas" style="display: none;"></canvas>
 
 <script>
-// ==================== 國際化 (英文 & 繁體中文) ====================
 const i18n = {
     en: {
         enterCamera: "📷 Enter Camera",
@@ -416,7 +408,7 @@ const i18n = {
         videoNoFilter: "Video (No Filter)",
         zoom: "ZOOM"
     },
-    zh: {  // 繁體中文
+    zh: {
         enterCamera: "📷 進入相機",
         intro: "📖 項目介紹 (即將開放)",
         back: "← 返回",
@@ -431,7 +423,7 @@ const i18n = {
     }
 };
 
-let currentLang = "en";   // 默認英語
+let currentLang = "en";
 let mediaStream = null;
 let isRecording = false;
 let mediaRecorder = null;
@@ -439,21 +431,18 @@ let recordedChunks = [];
 let recordingStartTime = 0;
 let recordingTimerInterval = null;
 
-// 媒體類型
-let currentMediaType = null; // 'photo' or 'video'
+let currentMediaType = null;
 let originalPhotoBlob = null;
 let originalVideoBlob = null;
 let currentFilterIndex = 0;
 let glowEnabled = false;
 let filterItems = [];
 
-// 变焦相关变量
 let videoTrack = null;
 let zoomCapabilities = null;
 let currentZoom = 1;
 let zoomSupported = false;
 
-// DOM 元素
 const homePage = document.getElementById('homePage');
 const cameraPage = document.getElementById('cameraPage');
 const previewPage = document.getElementById('previewPage');
@@ -470,16 +459,12 @@ const filterBadge = document.getElementById('filterBadge');
 const canvas = document.getElementById('captureCanvas');
 const ctx = canvas.getContext('2d');
 
-// 变焦控件
 const zoomControl = document.getElementById('zoomControl');
 const zoomSlider = document.getElementById('zoomSlider');
 const zoomValueSpan = document.getElementById('zoomValue');
 const zoomLabelSpan = document.getElementById('zoomLabel');
-
-// 对焦指示器
 const focusIndicator = document.getElementById('focusIndicator');
 
-// ========== 通用UI更新 ==========
 function updateUI() {
     const t = i18n[currentLang];
     document.getElementById('enterCameraBtn').textContent = t.enterCamera;
@@ -491,7 +476,6 @@ function updateUI() {
     glowLabel.textContent = t.glow;
     langToggleBtn.textContent = currentLang === "en" ? "中文" : "English";
     if (zoomLabelSpan) zoomLabelSpan.textContent = t.zoom;
-    
     if (filterItems.length) buildFilterUI();
     updateMediaSpecificBadge();
 }
@@ -518,14 +502,12 @@ function updateFilterBadge() {
     }
 }
 
-// ========== 变焦 + 对焦功能 ==========
 async function setupZoomAndFocus() {
     if (!mediaStream) return;
     videoTrack = mediaStream.getVideoTracks()[0];
     if (!videoTrack) return;
     
     const capabilities = videoTrack.getCapabilities();
-    // 检查变焦支持
     if (capabilities.zoom && capabilities.zoom.max > 1) {
         zoomSupported = true;
         const minZoom = capabilities.zoom.min || 1;
@@ -539,7 +521,6 @@ async function setupZoomAndFocus() {
         zoomValueSpan.textContent = `1.0x`;
         zoomControl.style.display = 'flex';
         
-        // 移除旧监听，重新绑定
         const zoomHandler = () => {
             const val = parseFloat(zoomSlider.value);
             currentZoom = val;
@@ -553,7 +534,6 @@ async function setupZoomAndFocus() {
     }
 }
 
-// 显示对焦动画并尝试对焦
 function showFocusAnimation(x, y) {
     focusIndicator.style.left = x + 'px';
     focusIndicator.style.top = y + 'px';
@@ -571,25 +551,18 @@ async function setFocusPoint(clientX, clientY) {
     if (relativeX < 0 || relativeX > 1 || relativeY < 0 || relativeY > 1) return;
     
     showFocusAnimation(clientX, clientY);
-    
-    // 尝试使用 pointsOfInterest (大多数移动端浏览器支持)
     try {
-        const constraints = {
-            advanced: [{ pointsOfInterest: [{ x: relativeX, y: relativeY }] }]
-        };
+        const constraints = { advanced: [{ pointsOfInterest: [{ x: relativeX, y: relativeY }] }] };
         await videoTrack.applyConstraints(constraints);
-        console.log("Focus set using pointsOfInterest");
         return;
     } catch (e) {
-        console.warn("pointsOfInterest not supported, fallback to continuous focus mode", e);
+        console.warn("pointsOfInterest not supported", e);
     }
     
-    // fallback: 切换一次 focusMode 触发自动对焦
     try {
         const caps = videoTrack.getCapabilities();
         if (caps.focusMode && caps.focusMode.includes('continuous')) {
             await videoTrack.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
-            console.log("Triggered continuous focus");
         } else if (caps.focusMode && caps.focusMode.includes('auto')) {
             await videoTrack.applyConstraints({ advanced: [{ focusMode: 'auto' }] });
         }
@@ -598,7 +571,6 @@ async function setFocusPoint(clientX, clientY) {
     }
 }
 
-// 视频点击事件绑定
 function attachVideoFocusHandler() {
     video.removeEventListener('click', videoClickHandler);
     video.addEventListener('click', videoClickHandler);
@@ -609,7 +581,6 @@ function videoClickHandler(e) {
     setFocusPoint(e.clientX, e.clientY);
 }
 
-// ========== 初始化摄像头（后置） ==========
 async function initCamera() {
     try {
         if (mediaStream) {
@@ -617,11 +588,7 @@ async function initCamera() {
         }
         
         const constraints = {
-            video: {
-                facingMode: { exact: "environment" },
-                width: { ideal: 3840 },
-                height: { ideal: 2160 }
-            }
+            video: { facingMode: { exact: "environment" }, width: { ideal: 3840 }, height: { ideal: 2160 } }
         };
         
         mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -629,10 +596,6 @@ async function initCamera() {
         await video.play();
         
         videoTrack = mediaStream.getVideoTracks()[0];
-        const settings = videoTrack.getSettings();
-        console.log("后置摄像头:", settings.width, "x", settings.height);
-        
-        // 设置变焦和对焦能力
         await setupZoomAndFocus();
         attachVideoFocusHandler();
         return true;
@@ -643,7 +606,6 @@ async function initCamera() {
     }
 }
 
-// ==================== 濾鏡核心算法 ====================
 function applyFilterToPixel(r, g, b, index) {
     switch(index) {
         case 1: return [Math.min(255, r * 0.75), Math.min(255, g * 1.35), Math.min(255, b * 0.7)];
@@ -669,9 +631,7 @@ function applyFilterToImageData(imageData, filterIndex, withGlow) {
     const data = imageData.data;
     for (let i = 0; i < data.length; i += 4) {
         let [r, g, b] = applyFilterToPixel(data[i], data[i+1], data[i+2], filterIndex);
-        data[i] = r;
-        data[i+1] = g;
-        data[i+2] = b;
+        data[i] = r; data[i+1] = g; data[i+2] = b;
         if (withGlow) {
             data[i] = Math.min(255, data[i] + 18);
             data[i+1] = Math.min(255, data[i+1] + 14);
@@ -681,7 +641,6 @@ function applyFilterToImageData(imageData, filterIndex, withGlow) {
     return imageData;
 }
 
-// 拍照
 async function takePhoto() {
     if (isRecording) return;
     if (!video.videoWidth) return;
@@ -715,13 +674,12 @@ async function applyFilterToPhoto() {
         img.onload = () => {
             const w = img.width, h = img.height;
             const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = w;
-            tempCanvas.height = h;
+            tempCanvas.width = w; tempCanvas.height = h;
             const tempCtx = tempCanvas.getContext('2d');
-            tempCtx.drawImage(img, 0, 0);
-            let imageData = tempCtx.getImageData(0, 0, w, h);
+            tempCtx.drawImage(img, 0,0);
+            let imageData = tempCtx.getImageData(0,0,w,h);
             imageData = applyFilterToImageData(imageData, currentFilterIndex, glowEnabled);
-            tempCtx.putImageData(imageData, 0, 0);
+            tempCtx.putImageData(imageData, 0,0);
             tempCanvas.toBlob((blob) => {
                 if (blob) {
                     const previewUrl = URL.createObjectURL(blob);
@@ -737,15 +695,12 @@ async function applyFilterToPhoto() {
     });
 }
 
-// ==================== 錄影（無濾鏡） ====================
 async function startRecording() {
     if (!mediaStream || isRecording) return;
     recordedChunks = [];
     const mimeType = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm';
     mediaRecorder = new MediaRecorder(mediaStream, { mimeType });
-    mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) recordedChunks.push(e.data);
-    };
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
     mediaRecorder.onstop = async () => {
         const videoBlob = new Blob(recordedChunks, { type: 'video/mp4' });
         currentMediaType = 'video';
@@ -767,9 +722,7 @@ async function startRecording() {
     videoRecordBtn.classList.add('recording');
     recordingStartTime = Date.now();
     startRecordingTimer();
-    setTimeout(() => {
-        if (isRecording) stopRecording();
-    }, 3000);
+    setTimeout(() => { if (isRecording) stopRecording(); }, 3000);
 }
 
 function stopRecording() {
@@ -794,14 +747,10 @@ function startRecordingTimer() {
 }
 
 function stopRecordingTimer() {
-    if (recordingTimerInterval) {
-        clearInterval(recordingTimerInterval);
-        recordingTimerInterval = null;
-    }
+    if (recordingTimerInterval) { clearInterval(recordingTimerInterval); recordingTimerInterval = null; }
     recordTimer.classList.remove('show');
 }
 
-// ==================== 濾鏡UI建構 ====================
 function buildFilterUI() {
     const filters = i18n[currentLang].filters;
     filterTrack.innerHTML = '';
@@ -813,10 +762,7 @@ function buildFilterUI() {
         div.textContent = name;
         div.onclick = async () => {
             currentFilterIndex = idx;
-            filterItems.forEach((item, i) => {
-                if (i === idx) item.classList.add('active');
-                else item.classList.remove('active');
-            });
+            filterItems.forEach((item, i) => { item.classList.toggle('active', i === idx); });
             updateFilterBadge();
             if (currentMediaType === 'photo' && originalPhotoBlob) await applyFilterToPhoto();
         };
@@ -825,59 +771,40 @@ function buildFilterUI() {
     });
 }
 
-// 页面导航
 async function goToCamera() {
     const success = await initCamera();
-    if (success) {
-        homePage.style.display = 'none';
-        cameraPage.style.display = 'block';
-        if (isRecording) stopRecording();
-    }
+    if (success) { homePage.style.display = 'none'; cameraPage.style.display = 'block'; }
 }
 
+// ========== 返回主站 ==========
 function goToHome() {
-    if (mediaStream) {
-        mediaStream.getTracks().forEach(track => track.stop());
-        mediaStream = null;
-    }
+    if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
     if (isRecording) stopRecording();
-    cameraPage.style.display = 'none';
-    previewPage.style.display = 'none';
-    homePage.style.display = 'flex';
+    window.location.href = "https://monsterlitpow3.github.io/EMIA2200-CreNature/CreNature.html";
 }
 
 function backToCamera() {
     previewPage.style.display = 'none';
     cameraPage.style.display = 'block';
-    originalPhotoBlob = null;
-    originalVideoBlob = null;
-    currentFilterIndex = 0;
-    glowEnabled = false;
+    originalPhotoBlob = null; originalVideoBlob = null;
+    currentFilterIndex = 0; glowEnabled = false;
     glowToggle.classList.remove('active');
     updateFilterBadge();
-    if (filterItems.length) {
-        filterItems.forEach((item, i) => {
-            if (i === 0) item.classList.add('active');
-            else item.classList.remove('active');
-        });
-    }
+    if (filterItems.length) filterItems.forEach((item,i) => item.classList.toggle('active', i===0));
 }
 
 function downloadMedia() {
-    if (currentMediaType === 'photo' && previewImg.src && previewImg.src.startsWith('blob:')) {
+    if (currentMediaType === 'photo' && previewImg.src.startsWith('blob:')) {
         const a = document.createElement('a');
         a.href = previewImg.src;
         a.download = `CreNature_${Date.now()}.jpg`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
     } else if (currentMediaType === 'video' && originalVideoBlob) {
         const url = URL.createObjectURL(originalVideoBlob);
         const a = document.createElement('a');
         a.href = url;
         a.download = `CreNature_${Date.now()}.mp4`;
-        document.body.appendChild(a);
-        a.click();
+        document.body.appendChild(a); a.click();
         setTimeout(() => URL.revokeObjectURL(url), 100);
     }
 }
@@ -890,12 +817,6 @@ async function toggleLanguage() {
         if (currentMediaType === 'photo' && originalPhotoBlob) {
             await applyFilterToPhoto();
             updateFilterBadge();
-            if (filterItems.length) {
-                filterItems.forEach((item, idx) => {
-                    if (idx === currentFilterIndex) item.classList.add('active');
-                    else item.classList.remove('active');
-                });
-            }
         } else if (currentMediaType === 'video') {
             const t = i18n[currentLang];
             filterBadge.textContent = t.videoNoFilter;
@@ -906,21 +827,17 @@ async function toggleLanguage() {
 async function toggleGlow() {
     if (currentMediaType !== 'photo') return;
     glowEnabled = !glowEnabled;
-    if (glowEnabled) glowToggle.classList.add('active');
-    else glowToggle.classList.remove('active');
+    glowToggle.classList.toggle('active', glowEnabled);
     updateFilterBadge();
     if (originalPhotoBlob) await applyFilterToPhoto();
 }
 
-// 事件绑定
+// 绑定事件
 document.getElementById('enterCameraBtn').onclick = goToCamera;
 document.getElementById('backHomeBtn').onclick = goToHome;
-document.getElementById('backFromPreviewBtn').onclick = backToCamera;
+document.getElementById('backFromPreviewBtn').onclick = goToHome;
 document.getElementById('shutterBtn').onclick = takePhoto;
-document.getElementById('videoRecordBtn').onclick = () => {
-    if (isRecording) stopRecording();
-    else startRecording();
-};
+document.getElementById('videoRecordBtn').onclick = () => { isRecording ? stopRecording() : startRecording(); };
 document.getElementById('reTakeBtn').onclick = backToCamera;
 document.getElementById('downloadBtn').onclick = downloadMedia;
 langToggleBtn.onclick = toggleLanguage;
@@ -932,8 +849,7 @@ buildFilterUI();
 homePage.style.display = 'flex';
 cameraPage.style.display = 'none';
 previewPage.style.display = 'none';
-updateFilterBadge();
-filterSection.style.display = 'none'; // 初始预览未出现时隐藏
+filterSection.style.display = 'none';
 </script>
 </body>
 </html>
